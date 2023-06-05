@@ -220,32 +220,27 @@ class StableDiffusion:
             model_name = "sd_1x_controlnet"
             if tdict_model_version != 12:
                 raise ValueError("Only SD 1.x models are supported with controlnet")
-        else:
-            if tdict_model_version == 12 :
-                model_name = "sd_1x"
-            elif tdict_model_version == 15 :
-                if "sd_2x" in self.ModelInterfaceClass.avail_models:
-                    model_name = "sd_2x"
-                else:
-                    raise ValueError("SD 2.x is not supported with this version")
+        elif tdict_model_version == 12:
+            model_name = "sd_1x"
+        elif tdict_model_version == 15 :
+            if "sd_2x" in self.ModelInterfaceClass.avail_models:
+                model_name = "sd_2x"
             else:
-                raise ValueError("This model is not compatable with this operation")
+                raise ValueError("SD 2.x is not supported with this version")
+        else:
+            raise ValueError("This model is not compatable with this operation")
 
 
-       
 
-        if self.current_model_name != model_name or self.current_dtype != dtype :
+
+        if self.current_model_name != model_name or self.current_dtype != dtype:
             print("[SD] Creating model interface")
             assert tdict_path is not None
 
             if self.model is not None:
                 self.model.destroy()
 
-            if second_tdict_path is not None:
-                tdict2 = TDict(second_tdict_path)
-            else:
-                tdict2 = None
-
+            tdict2 = TDict(second_tdict_path) if second_tdict_path is not None else None
             self.model = self.ModelInterfaceClass(TDict(tdict_path ) , dtype=dtype, model_name=model_name , second_tdict=tdict2)
             self.current_tdict_path = tdict_path
             self.second_current_tdict_path = second_tdict_path
@@ -259,15 +254,12 @@ class StableDiffusion:
 
             tdict_1 = None
 
-            if (tdict_path == self.current_tdict_path and second_tdict_path == self.second_current_tdict_path and self.current_weight_additions == ()):
-                pass
-                # current weigh has already been loaded with some tdicts , and nothing has been added
-            else:
-                if second_tdict_path is not None:
-                    tdict2 = TDict(second_tdict_path)
-                else:
-                    tdict2 = None
-
+            if (
+                tdict_path != self.current_tdict_path
+                or second_tdict_path != self.second_current_tdict_path
+                or self.current_weight_additions != ()
+            ):
+                tdict2 = TDict(second_tdict_path) if second_tdict_path is not None else None
                 tdict_1 = TDict(tdict_path)
 
                 self.model.load_from_tdict(tdict_1, tdict2 )
@@ -326,7 +318,7 @@ class StableDiffusion:
 
         if sd_run.inp_img_preprocesser is not None: #if you want to preprocess input image
             sd_run.input_image_orig = sd_run.input_image
-            outfname = sd_run.input_image + ".controlnet_processed_" + sd_run.inp_img_preprocesser  + ".jpg"
+            outfname = f"{sd_run.input_image}.controlnet_processed_{sd_run.inp_img_preprocesser}.jpg"
             if not os.path.exists(outfname):
                 preprocess_function = get_preprocess_function(sd_run.inp_img_preprocesser)
                 preprocess_function(inp_fname=sd_run.input_image , out_fname=outfname)
@@ -475,10 +467,10 @@ class StableDiffusion:
         if sd_run.seed is None:
             sd_run.seed = int(time.time()*100)%1002487
 
-        if sd_run.soft_seed is not None and sd_run.soft_seed >= 0 :
+        if sd_run.soft_seed is not None and sd_run.soft_seed >= 0:
             sd_run.soft_seed = sd_run.soft_seed + 1234*sd_run.img_id
         else:
-            sd_run.seed = sd_run.seed  + 1234*sd_run.img_id
+            sd_run.seed += 1234*sd_run.img_id
 
     def get_unet_out(self, sd_run):
 
@@ -494,7 +486,7 @@ class StableDiffusion:
                 np.repeat( (1 - sd_run.processed_mask_downscaled ), sd_run.batch_size , axis=0) , 
                 sd_run.encoded_masked_img 
             ], axis=-1)
-   
+
         latent_model_input =  latent_model_input * self.scheduler.get_input_scale(self.t_to_i(t))
 
         if sd_run.mode == "controlnet":
@@ -520,7 +512,7 @@ class StableDiffusion:
             text_emb_combined = np.concatenate([sd_run.unconditional_context , sd_run.context ])
 
             o = self.model.run_unet(unet_inp=latent_combined, time_emb=temb_combined, text_emb=text_emb_combined , control_inp=controls)
-            sd_run.predicted_unconditional_latent = o[0: o.shape[0]//2 ]
+            sd_run.predicted_unconditional_latent = o[:o.shape[0]//2]
             sd_run.predicted_latent = o[o.shape[0]//2 :]
         else:
             sd_run.predicted_unconditional_latent = self.model.run_unet(unet_inp=latent_model_input, time_emb=t_emb, text_emb=sd_run.unconditional_context , control_inp=controls)
@@ -631,15 +623,15 @@ class StableDiffusion:
                 inp_img_preprocesser=inp_img_preprocesser,
             )
 
-        if mode == "img2img":
+        if mode == "controlnet":
+            assert input_image is not None and input_image != ""
+
+        elif mode == "img2img":
             assert input_image is not None and input_image != ""
             sd_run.starting_img_given = True
 
             if mask_image is not None and mask_image != "":
                 sd_run.do_masking = True
-
-        if mode == "controlnet":
-            assert input_image is not None and input_image != ""
 
         signal = self.callback(state="Starting" , progress=-1  )
         if signal == "stop":
@@ -658,7 +650,7 @@ class StableDiffusion:
             log_object(sd_run , self.debug_output_path  , key="sd_run")
 
         self.maybe_process_inp_imgs(sd_run)
-                
+
         # Tokenize prompt (i.e. starting context)
         self.generate_text_emb(sd_run)
         self.prepare_init_latent(sd_run)
@@ -687,7 +679,7 @@ class StableDiffusion:
 
         if sd_run.do_masking:
             decoded = (sd_run.input_image_processed  * sd_run.processed_mask) + (decoded * (1 - sd_run.processed_mask ))
-        
+
         decoded = ((decoded + 1) / 2) * 255
         ret = ({"img" : np.clip(decoded, 0, 255).astype("uint8")})
 

@@ -26,10 +26,7 @@ def get_models(n_unet_ch=4 , is_sd2=False ):
     # Create text encoder
     input_word_ids = tf.keras.layers.Input(shape=(MAX_TEXT_LEN,), dtype="int32")
     input_pos_ids = tf.keras.layers.Input(shape=(MAX_TEXT_LEN,), dtype="int32")
-    if is_sd2:
-        text_encoder_f = CLIPTextTransformerV2()
-    else:
-        text_encoder_f = CLIPTextTransformer()
+    text_encoder_f = CLIPTextTransformerV2() if is_sd2 else CLIPTextTransformer()
     embeds = text_encoder_f([input_word_ids, input_pos_ids])
     text_encoder = tf.keras.models.Model([input_word_ids, input_pos_ids], embeds)
 
@@ -39,13 +36,10 @@ def get_models(n_unet_ch=4 , is_sd2=False ):
     else:
         context = tf.keras.layers.Input((MAX_TEXT_LEN, 768))
     t_emb = tf.keras.layers.Input((320,))
-  
+
     latent = tf.keras.layers.Input((n_h, n_w, n_unet_ch))
 
-    if is_sd2:
-        unet = UNetModelV2()
-    else:
-        unet = UNetModel()
+    unet = UNetModelV2() if is_sd2 else UNetModel()
     diffusion_model_f = unet
     diffusion_model = tf.keras.models.Model(
         [latent, t_emb, context], unet([latent, t_emb, context])
@@ -61,7 +55,7 @@ def get_models(n_unet_ch=4 , is_sd2=False ):
     encoder_f = Encoder()
     encoder = tf.keras.models.Model(inp_img, encoder_f(inp_img))
 
-    
+
     return text_encoder, diffusion_model, decoder, encoder , text_encoder_f , diffusion_model_f , decoder_f , encoder_f
 
 
@@ -92,11 +86,7 @@ def get_controlnet_models():
 def load_from_tdict(inp_file , models , is_sd2=False ):
     inp_file.init_read()
 
-    if is_sd2:
-        mappings_to_use = PYTORCH_CKPT_MAPPING_SD2
-    else:
-        mappings_to_use = PYTORCH_CKPT_MAPPING
-
+    mappings_to_use = PYTORCH_CKPT_MAPPING_SD2 if is_sd2 else PYTORCH_CKPT_MAPPING
     for module_name in models.keys():
         module_weights = []
         for i , (key , perm ) in enumerate(mappings_to_use[module_name]):
@@ -164,7 +154,7 @@ class ModelInterface:
         unet_inp = np.array(unet_inp).astype('float32')
         inps = [unet_inp, time_emb, text_emb]
         if control_inp is not None:
-            inps = inps + [ np.array(c).astype('float32') for c in control_inp ]
+            inps += [ np.array(c).astype('float32') for c in control_inp ]
         return np.array(self.diffusion_model_f(inps ))
 
     def run_controlnet(self, time_emb, text_emb, unet_inp, hint_img ):
@@ -184,8 +174,7 @@ class ModelInterface:
         return np.array(self.decoder_f(unet_out))
 
     def run_text_enc(self, tokens, pos_ids):
-        o =  np.array(self.text_encoder_f([tokens , pos_ids]))
-        return o
+        return np.array(self.text_encoder_f([tokens , pos_ids]))
 
     def run_enc(self, inp):
         inp = np.array(inp).astype('float32')

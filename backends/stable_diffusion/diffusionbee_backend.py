@@ -206,15 +206,8 @@ def process_opt(d, generator):
     aux_imgs = []
 
     for i in range(n_imgs):
-        if 'seed' in d:
-            seed = d['seed']
-        else:
-            seed = None
-        if 'soft_seed' in d:
-            soft_seed = d['soft_seed']
-        else:
-            soft_seed = None
-
+        seed = d['seed'] if 'seed' in d else None
+        soft_seed = d['soft_seed'] if 'soft_seed' in d else None
         outs  = generator.generate(
             d['prompt'],
             img_height=d["H"], img_width=d["W"],
@@ -245,17 +238,17 @@ def process_opt(d, generator):
             aux_img = outs['aux_img']
             if aux_img not in aux_imgs:
                 aux_imgs.append(aux_img)
-                print("sdbk nwim %s"%(aux_img) )
+                print(f"sdbk nwim {aux_img}")
 
         if img is None:
             return
-        
+
         for i in range(len(img)):
             s = ''.join(filter(str.isalnum, str(d['prompt'])[:30] ))
             fpath = os.path.join(defualt_data_root , "%s_%d.png"%(s ,  random.randint(0 ,100000000)) )
 
             Image.fromarray(img[i]).save(fpath)
-            print("sdbk nwim %s"%(fpath) )
+            print(f"sdbk nwim {fpath}")
 
 
 
@@ -269,16 +262,16 @@ def diffusion_bee_main():
 
 
     def callback(state="" , progress=-1):
-        print("sdbk dnpr "+str(progress) )
+        print(f"sdbk dnpr {str(progress)}")
         if state != "Generating":
-            print("sdbk gnms " + state)
+            print(f"sdbk gnms {state}")
 
         if is_avail():
             if "__stop__" in get_input():
                 return "stop"
 
     generator = StableDiffusion( ModelInterface , p_15 , model_name="sd_1x", callback=callback, debug_output_path=debug_output_path )
-    
+
 
     default_d = { "W" : 512 , "H" : 512, "num_imgs":1 , "ddim_steps" : 25 ,
      "scale" : 7.5, "batch_size":1 , "input_image" : None, "img_strength": 0.5
@@ -297,7 +290,7 @@ def diffusion_bee_main():
         if inp_str.strip() == "":
             continue
 
-        if not "b2py t2im" in inp_str or "__stop__" in inp_str:
+        if "b2py t2im" not in inp_str or "__stop__" in inp_str:
             continue
         inp_str = inp_str.replace("b2py t2im" , "").strip()
         try:
@@ -305,13 +298,13 @@ def diffusion_bee_main():
             d = copy.deepcopy(default_d)
             d.update(d_)
             print("sdbk inwk") # working on the input
-     
+
             process_opt(d, generator)
-            
+
         except Exception as e:
             traceback.print_exc()
-            print("sdbk errr %s"%(str(e)))
-            print("py2b eror " + str(e))
+            print(f"sdbk errr {str(e)}")
+            print(f"py2b eror {str(e)}")
 
 
 

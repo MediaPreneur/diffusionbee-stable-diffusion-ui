@@ -37,9 +37,9 @@ def add_lora_weights(src_tdict , state_dict , lora_tdict , ratio ):
     for k in tqdm(root_keys):
         if k not in state_dict:
             state_dict[k] = src_tdict.read_key(k).copy()
-        up_weight = lora_tdict.read_key(k + "_lora_up")
-        down_weight = lora_tdict.read_key(k + "_lora_down")
-        scale = lora_tdict.read_key(k + "_lora_scale")
+        up_weight = lora_tdict.read_key(f"{k}_lora_up")
+        down_weight = lora_tdict.read_key(f"{k}_lora_down")
+        scale = lora_tdict.read_key(f"{k}_lora_scale")
 
         state_dict[k] = add_lora_w( state_dict[k] , up_weight=up_weight , down_weight=down_weight ,  scale=scale , ratio=ratio  )
 

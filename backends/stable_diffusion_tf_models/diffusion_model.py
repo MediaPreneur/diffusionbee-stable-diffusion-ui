@@ -31,19 +31,17 @@ class ResBlock(tf.keras.layers.Layer):
         emb_out = apply_seq(emb, self.emb_layers)
         h = h + emb_out[:, None, None]
         h = apply_seq(h, self.out_layers)
-        ret = self.skip_connection(x) + h
-        return ret
+        return self.skip_connection(x) + h
 
 
 def td_split( x , n_splits=1):
     if n_splits == 1:
         return [x]
-    else:
-        n = x.shape[1]
-        assert n%2 == 0
-        x1 = x[: , :n//2]
-        x2 = x[: , n//2:]
-        return td_split(x1 , n_splits-1 ) + td_split(x2 , n_splits-1 )
+    n = x.shape[1]
+    assert n%2 == 0
+    x1 = x[: , :n//2]
+    x2 = x[: , n//2:]
+    return td_split(x1 , n_splits-1 ) + td_split(x2 , n_splits-1 )
 
 class CrossAttention(tf.keras.layers.Layer):
     def __init__(self, n_heads, d_head):

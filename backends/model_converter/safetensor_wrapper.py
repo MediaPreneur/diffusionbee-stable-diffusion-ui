@@ -11,17 +11,10 @@ class SafetensorWrapper:
 		return list(self.file.keys()) + list(self.new_items.keys())
 
 	def __contains__(self, k):
-		if k in self.file.keys():
-			return True 
-		if k in self.new_items:
-			return True 
-		return False
+		return True if k in self.file.keys() else k in self.new_items
 
 	def __getitem__(self , k):
-		if k in self.new_items:
-			return self.new_items[k]
-		else:
-			return self.file.get_tensor(k)
+		return self.new_items[k] if k in self.new_items else self.file.get_tensor(k)
 
 	def __setitem__(self, key , item ):
 		self.new_items[key] = item

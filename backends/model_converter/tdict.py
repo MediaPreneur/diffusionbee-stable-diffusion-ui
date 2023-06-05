@@ -138,7 +138,7 @@ class TDict:
 
 
     def read_key(self , key):
-        assert key in self.keys_info , "Key not found "+key
+        assert key in self.keys_info, f"Key not found {key}"
         w_idx_start =  self.keys_info[key]['start']
         w_idx_len =   self.keys_info[key]['end'] -   self.keys_info[key]['start']
         ret_arr = self.read_block(w_idx_start-64, np_dtype=self.keys_info[key]['dtype'] , np_shape=tuple(self.keys_info[key]['shape']) )

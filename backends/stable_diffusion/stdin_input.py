@@ -57,7 +57,4 @@ else:
         return input()
 
     def is_avail():
-        if select.select([sys.stdin, ], [], [], 0.0)[0]:
-            return True
-        else:
-            return False
+        return bool(select.select([sys.stdin, ], [], [], 0.0)[0])

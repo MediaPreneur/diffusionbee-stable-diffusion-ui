@@ -20,17 +20,17 @@ import time
 
 def get_md5_file(fpath):
 
-    if os.path.exists(fpath + ".done"):
-        cached = open(fpath + ".done").read()
+    if os.path.exists(f"{fpath}.done"):
+        cached = open(f"{fpath}.done").read()
         if "_" in cached:
             md_str = cached.split("_")[0]
             n_b = int(cached.split("_")[1])
             if n_b == os.path.getsize(fpath):
                 return md_str
 
-    md_str =  str(hashlib.md5(open(fpath, 'rb').read()).hexdigest())
+    md_str = hashlib.md5(open(fpath, 'rb').read()).hexdigest()
     n_b = os.path.getsize(fpath)
-    open(fpath + ".done" , "w").write(md_str + "_" + str(n_b))
+    open(f"{fpath}.done", "w").write(f"{md_str}_{str(n_b)}")
     return md_str
 
 
@@ -67,10 +67,7 @@ class ProgressBarDownloader(object):
         out_abs_path = os.path.join(self.downloads_root, out_fname)
         if not os.path.exists(out_abs_path):
             return False
-        if md5_checksum is not None and get_md5_file(
-                out_abs_path) != md5_checksum:
-            return False
-        return True
+        return md5_checksum is None or get_md5_file(out_abs_path) == md5_checksum
 
     def download(self, url, out_fname=None, md5_checksum=None,
                  verify_ssl=True, extract_zip=False, dont_use_cache=False):
@@ -95,9 +92,9 @@ class ProgressBarDownloader(object):
         # if(not verify_ssl) and md5_checksum is None:
         #     raise ValueError(
         #         "If you set verify_ssl=False, then you should have a md5 checksum")
-        print("sdbk mlpr %d"%int(-1) )
+        print("sdbk mlpr %d" % -1)
         print("sdbk mltl Checking Model")
-        
+
         if (not dont_use_cache) and self.is_already_downloaded(
                 out_fname=out_fname, md5_checksum=md5_checksum):
             if extract_zip:
@@ -111,7 +108,7 @@ class ProgressBarDownloader(object):
                 return out_abs_path
 
         with open(out_abs_path, "wb") as f:
-            print("sdbk mltl " + self.title)
+            print(f"sdbk mltl {self.title}")
             response = requests.get(url, stream=True, verify=verify_ssl)
             total_length = response.headers.get('content-length')
 
@@ -125,14 +122,16 @@ class ProgressBarDownloader(object):
                 for data in response.iter_content(chunk_size=4096):
                     dl += len(data)
                     f.write(data)
-                    done_percentage = 100* (dl / total_length)
-
                     if time.time() - last_time > 0.1:
                         last_time = time.time()
-                        print("sdbk mlpr %d"%int(done_percentage) ) # model loading percentage
-                        print("sdbk mlms %s"%("%.2fMB out of %.2fMB"%(dl/1000000 , total_length/1000000) ))
+                        done_percentage = 100* (dl / total_length)
 
-        print("sdbk mlpr %d"%int(-1) )
+                        print("sdbk mlpr %d"%int(done_percentage) ) # model loading percentage
+                        print(
+                            f'sdbk mlms {"%.2fMB out of %.2fMB" % (dl / 1000000, total_length / 1000000)}'
+                        )
+
+        print("sdbk mlpr %d" % -1)
         print("sdbk mltl Checking Model")
         print("sdbk mlms")
 

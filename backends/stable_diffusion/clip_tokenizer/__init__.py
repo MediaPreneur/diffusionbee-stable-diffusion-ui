@@ -16,18 +16,16 @@ def default_bpe():
     p = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "bpe_simple_vocab_16e6.txt.gz"
     )
-    # print("checking " , p )
     if os.path.exists(p):
         return p
-    else:
-        p2 = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),  ".." ,"bpe_simple_vocab_16e6.txt.gz"
-        )
-        p2 = os.path.abspath(p2)
-        # print("checking " , p2 )
-        if os.path.exists(p2):
-            return p2
-        assert False
+    p2 = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),  ".." ,"bpe_simple_vocab_16e6.txt.gz"
+    )
+    p2 = os.path.abspath(p2)
+    # print("checking " , p2 )
+    if os.path.exists(p2):
+        return p2
+    assert False
 
 
 @lru_cache()
@@ -89,9 +87,8 @@ class SimpleTokenizer(object):
         merges = merges[1 : 49152 - 256 - 2 + 1]
         merges = [tuple(merge.split()) for merge in merges]
         vocab = list(bytes_to_unicode().values())
-        vocab = vocab + [v + "</w>" for v in vocab]
-        for merge in merges:
-            vocab.append("".join(merge))
+        vocab += [f"{v}</w>" for v in vocab]
+        vocab.extend("".join(merge) for merge in merges)
         vocab.extend(["<|startoftext|>", "<|endoftext|>"])
         self.encoder = dict(zip(vocab, range(len(vocab))))
         self.decoder = {v: k for k, v in self.encoder.items()}
@@ -108,11 +105,11 @@ class SimpleTokenizer(object):
     def bpe(self, token):
         if token in self.cache:
             return self.cache[token]
-        word = tuple(token[:-1]) + (token[-1] + "</w>",)
+        word = tuple(token[:-1]) + (f"{token[-1]}</w>", )
         pairs = get_pairs(word)
 
         if not pairs:
-            return token + "</w>"
+            return f"{token}</w>"
 
         while True:
             bigram = min(pairs, key=lambda pair: self.bpe_ranks.get(pair, float("inf")))
@@ -158,12 +155,11 @@ class SimpleTokenizer(object):
 
     def decode(self, tokens):
         text = "".join([self.decoder[token] for token in tokens])
-        text = (
+        return (
             bytearray([self.byte_decoder[c] for c in text])
             .decode("utf-8", errors="replace")
             .replace("</w>", " ")
         )
-        return text
 
 
 class SimpleTokenizerV2(object):
@@ -178,10 +174,8 @@ class SimpleTokenizerV2(object):
         merges = merges[1 : 49152 - 256 - 2 + 1]
         merges = [tuple(merge.split()) for merge in merges]
         vocab = list(bytes_to_unicode().values())
-        vocab = vocab + [v + "</w>" for v in vocab]
-        for merge in merges:
-            vocab.append("".join(merge))
-        
+        vocab += [f"{v}</w>" for v in vocab]
+        vocab.extend("".join(merge) for merge in merges)
         """
         Special Tokens are words we want to add to the vocabularly that don't exist in real life.
         We can use these special tokens to activate pre-trained vectors for the text-encoder
@@ -200,7 +194,7 @@ class SimpleTokenizerV2(object):
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.bpe_ranks = dict(zip(merges, range(len(merges))))
         self.cache = {t:t for t in specialTokens}
-        
+
         # Create special words to recognize
         special = "|".join(specialTokens)
         self.pat = re.compile(
@@ -214,11 +208,11 @@ class SimpleTokenizerV2(object):
     def bpe(self, token):
         if token in self.cache:
             return self.cache[token]
-        word = tuple(token[:-1]) + (token[-1] + "</w>",)
+        word = tuple(token[:-1]) + (f"{token[-1]}</w>", )
         pairs = get_pairs(word)
 
         if not pairs:
-            return token + "</w>"
+            return f"{token}</w>"
 
         while True:
             bigram = min(pairs, key = lambda pair: self.bpe_ranks.get(pair, float("inf")))
@@ -264,9 +258,8 @@ class SimpleTokenizerV2(object):
 
     def decode(self, tokens):
         text = "".join([self.decoder[token] for token in tokens])
-        text = (
+        return (
             bytearray([self.byte_decoder[c] for c in text])
             .decode("utf-8", errors="replace")
             .replace("</w>", " ")
         )
-        return text
