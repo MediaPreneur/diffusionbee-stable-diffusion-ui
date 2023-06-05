@@ -23,10 +23,12 @@ NO_PICKLE_DEBUG = False
 ### Unpickling import:
 def my_unpickle(fb0):
   key_prelookup = {}
+
+
   class HackTensor:
     def __new__(cls, *args):
       #print(args)
-      ident, storage_type, obj_key, location, obj_size = args[0][0:5]
+      ident, storage_type, obj_key, location, obj_size = args[0][:5]
       assert ident == 'storage'
 
       assert prod(args[2]) == obj_size
@@ -42,6 +44,7 @@ def my_unpickle(fb0):
 
       return ret
 
+
   class HackParameter:
     def __new__(cls, *args):
       #print(args)
@@ -49,6 +52,8 @@ def my_unpickle(fb0):
 
   class Dummy:
     pass
+
+
 
   class MyPickle(pickle.Unpickler):
     def find_class(self, module, name):
@@ -60,10 +65,10 @@ def my_unpickle(fb0):
       if name == 'HalfStorage':
         return np.float16
       if module == "torch._utils":
-        if name == "_rebuild_tensor_v2":
-          return HackTensor
-        elif name == "_rebuild_parameter":
+        if name == "_rebuild_parameter":
           return HackParameter
+        elif name == "_rebuild_tensor_v2":
+          return HackTensor
       else:
         try:
           return pickle.Unpickler.find_class(self, module, name)
@@ -73,19 +78,20 @@ def my_unpickle(fb0):
     def persistent_load(self, pid):
       return pid
 
+
   return MyPickle(fb0).load(), key_prelookup
 
 def fake_torch_load_zipped(fb0, load_weights=True):
   with zipfile.ZipFile(fb0, 'r') as myzip:
     folder_name = [a for a in myzip.namelist() if a.endswith("/data.pkl")]
-    if len(folder_name)== 0:
+    if not folder_name:
       raise ValueError("Looke like the checkpoints file is in the wrong format")
     folder_name = folder_name[0].replace("/data.pkl" , "").replace("\\data.pkl" , "")
-    with myzip.open(folder_name+'/data.pkl') as myfile:
+    with myzip.open(f'{folder_name}/data.pkl') as myfile:
       ret = my_unpickle(myfile)
     if load_weights:
       for k, v_arr in ret[1].items():
-        with myzip.open(folder_name + f'/data/{k}') as myfile:
+        with myzip.open(f'{folder_name}/data/{k}') as myfile:
           #print(f"Eating data file {k} now")
           file_data = myfile.read()
           for v in v_arr:
@@ -99,23 +105,22 @@ def fake_torch_load_zipped(fb0, load_weights=True):
 
 ### No-unpickling import:
 def extract_weights_from_checkpoint(fb0):
-  torch_weights = {}
-  torch_weights['state_dict'] = {}
+  torch_weights = {'state_dict': {}}
   with zipfile.ZipFile(fb0, 'r') as myzip:
     folder_name = [a for a in myzip.namelist() if a.endswith("/data.pkl")]
-    if len(folder_name)== 0:
+    if not folder_name:
       raise ValueError("Looks like the checkpoints file is in the wrong format")
     folder_name = folder_name[0].replace("/data.pkl" , "").replace("\\data.pkl" , "")
-    with myzip.open(folder_name+'/data.pkl') as myfile:
+    with myzip.open(f'{folder_name}/data.pkl') as myfile:
       load_instructions = examine_pickle(myfile)
       for sd_key,load_instruction in load_instructions.items():
-        with myzip.open(folder_name + f'/data/{load_instruction.obj_key}') as myfile:
+        with myzip.open(f'{folder_name}/data/{load_instruction.obj_key}') as myfile:
           if (load_instruction.load_from_file_buffer(myfile)):
             torch_weights['state_dict'][sd_key] = load_instruction.get_data()
-      #if len(special_instructions) > 0:
-      #  torch_weights['state_dict']['_metadata'] = {}
-      #  for sd_key,special in special_instructions.items():
-      #    torch_weights['state_dict']['_metadata'][sd_key] = special
+          #if len(special_instructions) > 0:
+          #  torch_weights['state_dict']['_metadata'] = {}
+          #  for sd_key,special in special_instructions.items():
+          #    torch_weights['state_dict']['_metadata'][sd_key] = special
   return torch_weights
 
 def examine_pickle(fb0, return_special=False):
@@ -260,9 +265,8 @@ class AssignInstructions:
     for sd_key, fickling_var in self.instructions.items():
       if fickling_var in load_instructions:
         self.integrated_instructions[sd_key] = load_instructions[fickling_var]
-      else:
-        if NO_PICKLE_DEBUG:
-          print(f"no load instruction found for {sd_key}")
+      elif NO_PICKLE_DEBUG:
+        print(f"no load instruction found for {sd_key}")
 
     if NO_PICKLE_DEBUG:
       print(f"Have {len(self.integrated_instructions)} integrated load/assignment instructions")
@@ -300,7 +304,7 @@ class LoadInstruction:
 
   def parse_instruction(self, instruction_string):
     ## this function could probably be cleaned up/shortened. 
-    
+
     ## this is the API def for _rebuild_tensor_v2:
     ## _rebuild_tensor_v2(storage, storage_offset, size, stride, requires_grad, backward_hooks):
     #
@@ -318,7 +322,7 @@ class LoadInstruction:
     if self.extra_debugging:
       print("storage_etc, reference: ''storage', HalfStorage, '0', 'cpu', 11520)), 0, (320, 4, 3, 3), (36, 9, 3, 1), False, _var0)'")
       print(f"storage_etc, actual: '{storage_etc}'\n")
-      
+
     storage, etc = storage_etc.split('))', 1)
     # storage = 'storage', HalfStorage, '0', 'cpu', 11520
     # etc = , 0, (320, 4, 3, 3), (36, 9, 3, 1), False, _var0)
@@ -354,18 +358,8 @@ class LoadInstruction:
     stride = stride.strip('(,')
     size = size.strip(',')
 
-    if (size == ''):
-      # rare case where there is an empty tuple. SDv1.4 has two of these.
-      self.size_tuple = ()
-    else:
-      self.size_tuple = tuple(map(int, size.split(', ')))
-
-    if (stride == ''):
-      self.stride = ()
-    else:
-      self.stride = tuple(map(int, stride.split(', ')))
-
-
+    self.size_tuple = () if (size == '') else tuple(map(int, size.split(', ')))
+    self.stride = () if (stride == '') else tuple(map(int, stride.split(', ')))
     if self.extra_debugging:
       print(f"size: {self.size_tuple}, stride: {self.stride}")
 

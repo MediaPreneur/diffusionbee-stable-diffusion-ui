@@ -510,7 +510,7 @@ mas = "./test_assets/ddd.png"
 
 
 
-for cur_run_id in range(2):
+for _ in range(2):
     img = sd.generate(
         prompt="a haloween bedroom" , 
         img_height=512+64, 
@@ -525,7 +525,7 @@ for cur_run_id in range(2):
         mode="img2img" )
     Image.fromarray(img[0]).show()
 
-for cur_run_id in range(2):
+for _ in range(2):
     img = sd.generate(
         prompt="modern disney a blue colored baby lion with lots of fur" , 
         img_height=512-64, 

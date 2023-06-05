@@ -82,7 +82,7 @@ class CLIPEncoderLayer(tf.keras.layers.Layer):
 class CLIPEncoder(tf.keras.layers.Layer):
     def __init__(self):
         super().__init__()
-        self.layers = [CLIPEncoderLayer() for i in range(12)]
+        self.layers = [CLIPEncoderLayer() for _ in range(12)]
 
     def call(self, inputs):
         [hidden_states, causal_attention_mask] = inputs

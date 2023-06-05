@@ -184,10 +184,7 @@ class LMSDiscreteScheduler(SchedulerMixin):
             coeff * derivative for coeff, derivative in zip(lms_coeffs, reversed(self.derivatives))
         )
 
-        if not return_dict:
-            return (prev_sample,)
-
-        return {"prev_sample":prev_sample}
+        return (prev_sample, ) if not return_dict else {"prev_sample":prev_sample}
 
     def add_noise(
         self,
@@ -196,9 +193,7 @@ class LMSDiscreteScheduler(SchedulerMixin):
         timesteps: Union[np.ndarray],
     ) -> Union[ np.ndarray]:
         sigmas = self.match_shape(self.sigmas[timesteps], noise)
-        noisy_samples = original_samples + noise * sigmas
-
-        return noisy_samples
+        return original_samples + noise * sigmas
 
     def __len__(self):
         return self.config.num_train_timesteps

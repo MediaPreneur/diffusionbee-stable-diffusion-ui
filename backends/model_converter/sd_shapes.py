@@ -12,31 +12,31 @@ def add_aux_shapes(d):
             sh = list(d[k])
             sh[0] = sh[0] // 2
             sh = tuple(sh)
-            d[k + "._split_1"] = sh
-            d[k + "._split_2"] = sh
+            d[f"{k}._split_1"] = sh
+            d[f"{k}._split_2"] = sh
 
-        elif "attn.in_proj" in k and d[k][0]  == 3072  :
+        elif "attn.in_proj" in k and d[k][0]  == 3072:
             sh = list(d[k])
             sh[0] = sh[0] // 3
             sh = tuple(sh)
-            d[k + "._split_1"] = sh
-            d[k + "._split_2"] = sh
-            d[k + "._split_3"] = sh
+            d[f"{k}._split_1"] = sh
+            d[f"{k}._split_2"] = sh
+            d[f"{k}._split_3"] = sh
 
         for i in range(1,21):
             nn = 320*i
-            d["zeros_"+str(nn)] = (nn,)
-            d["ones_"+str(nn)] = (nn,)
+            d[f"zeros_{str(nn)}"] = (nn,)
+            d[f"ones_{str(nn)}"] = (nn,)
 
             nn = 128*i
-            d["zeros_"+str(nn)] = (nn,)
-            d["ones_"+str(nn)] = (nn,)
+            d[f"zeros_{str(nn)}"] = (nn,)
+            d[f"ones_{str(nn)}"] = (nn,)
 
 
 
 
 sd_1x_shapes = {}
-sd_1x_shapes.update(shapes_unet)
+sd_1x_shapes |= shapes_unet
 sd_1x_shapes.update(shapes_encoder)
 sd_1x_shapes.update(shapes_decoder)
 sd_1x_shapes.update(shapes_text_encoder)
@@ -52,7 +52,7 @@ add_aux_shapes(sd_1x_inpaint_shapes)
 
 
 sd_2x_shapes = {}
-sd_2x_shapes.update(shapes_unet_v2)
+sd_2x_shapes |= shapes_unet_v2
 sd_2x_shapes.update(shapes_encoder)
 sd_2x_shapes.update(shapes_decoder)
 sd_2x_shapes.update(text_encoder_open_clip)
@@ -141,8 +141,10 @@ def get_model_type(state_dict):
     check_shapes_float(state_dict , shapes)
     c_dtype = get_dtype(state_dict , shapes)
     if c_dtype not in ["float32" , "float16"]:
-        raise ValueError("The weights should either be float32 or float16, but these are " + c_dtype)
+        raise ValueError(
+            f"The weights should either be float32 or float16, but these are {c_dtype}"
+        )
 
-    return mname + "_" + c_dtype
+    return f"{mname}_{c_dtype}"
 
 

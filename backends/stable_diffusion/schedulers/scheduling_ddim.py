@@ -143,9 +143,9 @@ class DDIMScheduler(SchedulerMixin):
         beta_prod_t = 1 - alpha_prod_t
         beta_prod_t_prev = 1 - alpha_prod_t_prev
 
-        variance = (beta_prod_t_prev / beta_prod_t) * (1 - alpha_prod_t / alpha_prod_t_prev)
-
-        return variance
+        return (beta_prod_t_prev / beta_prod_t) * (
+            1 - alpha_prod_t / alpha_prod_t_prev
+        )
 
     def set_timesteps(self, num_inference_steps: int, offset: int = 0):
         """
@@ -255,10 +255,7 @@ class DDIMScheduler(SchedulerMixin):
 
             prev_sample = prev_sample + variance
 
-        if not return_dict:
-            return (prev_sample,)
-
-        return {"prev_sample":prev_sample} # SchedulerOutput(prev_sample=prev_sample)
+        return (prev_sample, ) if not return_dict else {"prev_sample":prev_sample}
 
     def add_noise(
         self,
@@ -276,8 +273,7 @@ class DDIMScheduler(SchedulerMixin):
         sqrt_one_minus_alpha_prod = (1 - self.alphas_cumprod[timesteps]) ** 0.5
         sqrt_one_minus_alpha_prod = self.match_shape(sqrt_one_minus_alpha_prod, original_samples)
 
-        noisy_samples = sqrt_alpha_prod * original_samples + sqrt_one_minus_alpha_prod * noise
-        return noisy_samples
+        return sqrt_alpha_prod * original_samples + sqrt_one_minus_alpha_prod * noise
 
     def __len__(self):
         return self.config.num_train_timesteps
